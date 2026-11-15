@@ -1,0 +1,101 @@
+@import "tailwindcss";
+
+:root {
+  --ink: #0f1a17;
+  --forest: #0e7a5f;
+  --forest-deep: #0a5c48;
+  --mint: #cff3e4;
+  --sand: #f6f1e7;
+  --paper: #fbf8f2;
+  --coral: #ff6b4a;
+  --sun: #ffc857;
+  --muted: #4d5a55;
+  --line: rgb(15 26 23 / 0.1);
+}
+
+@theme inline {
+  --color-ink: var(--ink);
+  --color-forest: var(--forest);
+  --color-forest-deep: var(--forest-deep);
+  --color-mint: var(--mint);
+  --color-sand: var(--sand);
+  --color-paper: var(--paper);
+  --color-coral: var(--coral);
+  --color-sun: var(--sun);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+
+  --font-sans: var(--font-public-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
+
+  --radius-card: 24px;
+  --radius-panel: 28px;
+
+  --shadow-soft: 0 1px 2px rgb(15 26 23 / 0.04), 0 8px 24px -8px rgb(15 26 23 / 0.1);
+  --shadow-lift: 0 2px 4px rgb(15 26 23 / 0.04), 0 24px 48px -16px rgb(15 26 23 / 0.18);
+
+  --ease-out-soft: cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+html {
+  background: var(--sand);
+  -webkit-text-size-adjust: 100%;
+}
+
+html.lenis,
+html.lenis body {
+  height: auto;
+}
+
+.lenis.lenis-smooth {
+  scroll-behavior: auto !important;
+}
+
+body {
+  background: var(--sand);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: var(--mint);
+  color: var(--ink);
+}
+
+:focus-visible {
+  outline: 2px solid var(--forest);
+  outline-offset: 3px;
+  border-radius: 8px;
+}
+
+.grain::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.035;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+@keyframes drift {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+  50% { transform: translate3d(4%, -3%, 0) scale(1.06); }
+}
+
+@keyframes marquee {
+  from { transform: translate3d(0, 0, 0); }
+  to { transform: translate3d(-50%, 0, 0); }
+}
+
+.animate-drift { animation: drift 18s ease-in-out infinite; }
+.animate-drift-slow { animation: drift 26s ease-in-out infinite reverse; }
+.animate-marquee { animation: marquee 40s linear infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-drift,
+  .animate-drift-slow,
+  .animate-marquee {
+    animation: none;
+  }
+}
