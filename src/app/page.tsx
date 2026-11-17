@@ -7,10 +7,11 @@ import { Employers } from "@/components/landing/employers";
 import { Trust } from "@/components/landing/trust";
 import { Faq } from "@/components/landing/faq";
 import { Fields, FinalCta, Footer } from "@/components/landing/cta-footer";
+import { PageTransition } from "@/components/page-transition";
 
 export default function Home() {
   return (
-    <>
+    <PageTransition className="">
       <Nav />
       <main>
         <Hero />
@@ -24,6 +25,6 @@ export default function Home() {
         <FinalCta />
       </main>
       <Footer />
-    </>
+    </PageTransition>
   );
 }

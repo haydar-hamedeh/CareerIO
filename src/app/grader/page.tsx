@@ -6,16 +6,17 @@ import { z } from "zod";
 import { requireSession } from "@/lib/auth/session";
 import { AppHeader } from "@/components/app/app-header";
 import { GraderClient } from "@/components/grader/grader-client";
+import { PageTransition } from "@/components/page-transition";
 
 export const metadata: Metadata = { title: "CV Grader · CareerIO" };
 
 export default function GraderPage({ searchParams }: PageProps<"/grader">) {
   return (
-    <div className="min-h-dvh w-full">
+    <PageTransition>
       <Suspense fallback={<GraderSkeleton />}>
         <Grader searchParams={searchParams as Promise<{ job?: string }>} />
       </Suspense>
-    </div>
+    </PageTransition>
   );
 }
 

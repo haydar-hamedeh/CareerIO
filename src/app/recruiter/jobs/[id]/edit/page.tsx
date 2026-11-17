@@ -9,16 +9,17 @@ import { requireEmployer } from "@/lib/auth/employer";
 import { AppHeader } from "@/components/app/app-header";
 import { JobForm, type JobFormInitial } from "@/components/recruiter/job-form";
 import { parseQuestions } from "@/lib/jobs/screening";
+import { PageTransition } from "@/components/page-transition";
 
 export const metadata: Metadata = { title: "Edit job · CareerIO" };
 
 export default function EditJobPage({ params }: { params: Promise<{ id: string }> }) {
   return (
-    <div className="min-h-dvh w-full">
+    <PageTransition>
       <Suspense fallback={<div className="h-16 border-b border-line bg-paper" />}>
         <EditJob params={params} />
       </Suspense>
-    </div>
+    </PageTransition>
   );
 }
 

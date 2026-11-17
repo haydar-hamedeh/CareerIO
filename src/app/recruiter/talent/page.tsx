@@ -6,16 +6,17 @@ import { requireEmployer } from "@/lib/auth/employer";
 import { AppHeader } from "@/components/app/app-header";
 import { TalentClient } from "@/components/recruiter/talent-client";
 import { runTalentSearch } from "@/lib/recruiter/talent";
+import { PageTransition } from "@/components/page-transition";
 
 export const metadata: Metadata = { title: "Find talent · CareerIO" };
 
 export default function TalentPage({ searchParams }: { searchParams: Promise<{ job?: string }> }) {
   return (
-    <div className="min-h-dvh w-full">
+    <PageTransition>
       <Suspense fallback={<div className="h-16 border-b border-line bg-paper" />}>
         <Talent searchParams={searchParams} />
       </Suspense>
-    </div>
+    </PageTransition>
   );
 }
 

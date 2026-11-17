@@ -6,16 +6,17 @@ import { ArrowLeft } from "lucide-react";
 import { requireEmployer } from "@/lib/auth/employer";
 import { AppHeader } from "@/components/app/app-header";
 import { JobForm, emptyJob } from "@/components/recruiter/job-form";
+import { PageTransition } from "@/components/page-transition";
 
 export const metadata: Metadata = { title: "Post a job · CareerIO" };
 
 export default function NewJobPage() {
   return (
-    <div className="min-h-dvh w-full">
+    <PageTransition>
       <Suspense fallback={<div className="h-16 border-b border-line bg-paper" />}>
         <NewJob />
       </Suspense>
-    </div>
+    </PageTransition>
   );
 }
 

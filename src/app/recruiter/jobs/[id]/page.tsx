@@ -12,6 +12,7 @@ import { JobStatusButton } from "@/components/recruiter/job-status-button";
 import { levelShort, typeLabel } from "@/lib/jobs/format";
 import { workModeLabel } from "@/lib/onboarding/schema";
 import type { ApplicantDto, AppStatus } from "@/lib/recruiter/types";
+import { PageTransition } from "@/components/page-transition";
 
 export const metadata: Metadata = { title: "Applicants · CareerIO" };
 
@@ -19,11 +20,11 @@ type Search = { app?: string };
 
 export default function JobApplicantsPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<Search> }) {
   return (
-    <div className="min-h-dvh w-full">
+    <PageTransition>
       <Suspense fallback={<div className="h-16 border-b border-line bg-paper" />}>
         <JobApplicants params={params} searchParams={searchParams} />
       </Suspense>
-    </div>
+    </PageTransition>
   );
 }
 

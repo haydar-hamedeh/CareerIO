@@ -4,16 +4,17 @@ import { connection } from "next/server";
 import { requireEmployer } from "@/lib/auth/employer";
 import { AppHeader } from "@/components/app/app-header";
 import { CompanyForm } from "@/components/recruiter/company-form";
+import { PageTransition } from "@/components/page-transition";
 
 export const metadata: Metadata = { title: "Your company · CareerIO" };
 
 export default function CompanyPage() {
   return (
-    <div className="min-h-dvh w-full">
+    <PageTransition>
       <Suspense fallback={<div className="h-16 border-b border-line bg-paper" />}>
         <Company />
       </Suspense>
-    </div>
+    </PageTransition>
   );
 }
 

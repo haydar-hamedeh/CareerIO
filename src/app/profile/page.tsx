@@ -8,16 +8,17 @@ import { ProfileClient } from "@/components/profile/profile-client";
 import type { ProfileRow } from "@/components/onboarding/sections";
 import type { CvItem } from "./actions";
 import { normSkill } from "@/lib/jobs/match";
+import { PageTransition } from "@/components/page-transition";
 
 export const metadata: Metadata = { title: "Your profile · CareerIO" };
 
 export default function ProfilePage() {
   return (
-    <div className="min-h-dvh w-full">
+    <PageTransition>
       <Suspense fallback={<ProfileSkeleton />}>
         <Profile />
       </Suspense>
-    </div>
+    </PageTransition>
   );
 }
 

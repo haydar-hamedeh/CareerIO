@@ -11,6 +11,7 @@ import { FeedClient } from "@/components/feed/feed-client";
 import { computeFit, currentTime, fitReason, formatSalary, timeAgo } from "@/lib/jobs/match";
 import { levelShort, typeLabel } from "@/lib/jobs/format";
 import { jobFields } from "@/lib/recruiter/job-schema";
+import { PageTransition } from "@/components/page-transition";
 
 const list = (v?: string) => (v ? v.split(",").filter(Boolean).slice(0, 30) : []);
 import { mergeSkills, primaryCvSkills } from "@/lib/jobs/cv-skills";
@@ -22,11 +23,11 @@ type Search = { q?: string; mode?: string; level?: string; field?: string; saved
 
 export default function FeedPage({ searchParams }: PageProps<"/feed">) {
   return (
-    <div className="min-h-dvh w-full">
+    <PageTransition>
       <Suspense fallback={<FeedSkeleton />}>
         <Feed searchParams={searchParams as Promise<Search>} />
       </Suspense>
-    </div>
+    </PageTransition>
   );
 }
 

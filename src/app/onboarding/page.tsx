@@ -7,16 +7,17 @@ import { requireSession } from "@/lib/auth/session";
 import { AppHeader } from "@/components/app/app-header";
 import { CandidateWizardLoader } from "@/components/onboarding/candidate-wizard-loader";
 import { EmployerForm } from "@/components/onboarding/employer-form";
+import { PageTransition } from "@/components/page-transition";
 
 export const metadata: Metadata = { title: "Set up your profile · CareerIO" };
 
 export default function OnboardingPage() {
   return (
-    <div className="min-h-dvh w-full">
+    <PageTransition>
       <Suspense fallback={<OnboardingSkeleton />}>
         <Onboarding />
       </Suspense>
-    </div>
+    </PageTransition>
   );
 }
 

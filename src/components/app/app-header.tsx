@@ -34,7 +34,7 @@ export function AppHeader({ name, active, showProfile = true, role = "candidate"
         ];
 
   return (
-    <header className="sticky top-0 z-40 w-full border-b border-line bg-paper">
+    <header style={{ viewTransitionName: "site-header" }} className="sticky top-0 z-40 w-full border-b border-line bg-paper">
       <div className="mx-auto flex h-16 max-w-[1240px] items-center justify-between gap-4 px-4 sm:px-6">
         <Link href={employer ? "/recruiter" : "/feed"} aria-label="CareerIO home" className="rounded-xl">
           <Logo />

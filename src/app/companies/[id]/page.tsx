@@ -11,16 +11,17 @@ import { CompanyAvatar } from "@/components/company/company-avatar";
 import { levelShort, typeLabel } from "@/lib/jobs/format";
 import { formatSalary } from "@/lib/jobs/match";
 import { workModeLabel } from "@/lib/onboarding/schema";
+import { PageTransition } from "@/components/page-transition";
 
 export const metadata: Metadata = { title: "Company · CareerIO" };
 
 export default function CompanyPublicPage({ params }: { params: Promise<{ id: string }> }) {
   return (
-    <div className="min-h-dvh w-full">
+    <PageTransition>
       <Suspense fallback={<div className="h-16 border-b border-line bg-paper" />}>
         <CompanyView params={params} />
       </Suspense>
-    </div>
+    </PageTransition>
   );
 }
 

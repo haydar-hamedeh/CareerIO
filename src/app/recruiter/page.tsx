@@ -10,16 +10,17 @@ import { MatchRing } from "@/components/feed/job-card";
 import { currentTime, timeAgo } from "@/lib/jobs/match";
 import { levelShort, typeLabel } from "@/lib/jobs/format";
 import { workModeLabel } from "@/lib/onboarding/schema";
+import { PageTransition } from "@/components/page-transition";
 
 export const metadata: Metadata = { title: "Recruiter dashboard · CareerIO" };
 
 export default function RecruiterPage({ searchParams }: { searchParams: Promise<{ welcome?: string }> }) {
   return (
-    <div className="min-h-dvh w-full">
+    <PageTransition>
       <Suspense fallback={<DashboardSkeleton />}>
         <Dashboard searchParams={searchParams} />
       </Suspense>
-    </div>
+    </PageTransition>
   );
 }
 

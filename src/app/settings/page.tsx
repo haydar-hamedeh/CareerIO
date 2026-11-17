@@ -5,16 +5,17 @@ import { connection } from "next/server";
 import { requireSession } from "@/lib/auth/session";
 import { AppHeader } from "@/components/app/app-header";
 import { SettingsClient } from "@/components/settings/settings-client";
+import { PageTransition } from "@/components/page-transition";
 
 export const metadata: Metadata = { title: "Settings · CareerIO" };
 
 export default function SettingsPage() {
   return (
-    <div className="min-h-dvh w-full">
+    <PageTransition>
       <Suspense fallback={<div className="h-16 border-b border-line bg-paper" />}>
         <Settings />
       </Suspense>
-    </div>
+    </PageTransition>
   );
 }
 

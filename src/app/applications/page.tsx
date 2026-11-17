@@ -9,16 +9,17 @@ import { AppHeader } from "@/components/app/app-header";
 import { MatchRing } from "@/components/feed/job-card";
 import { statusLabel, statusTone, type AppStatus } from "@/lib/recruiter/types";
 import { CompanyAvatar } from "@/components/company/company-avatar";
+import { PageTransition } from "@/components/page-transition";
 
 export const metadata: Metadata = { title: "My applications · CareerIO" };
 
 export default function ApplicationsPage() {
   return (
-    <div className="min-h-dvh w-full">
+    <PageTransition>
       <Suspense fallback={<div className="h-16 border-b border-line bg-paper" />}>
         <Applications />
       </Suspense>
-    </div>
+    </PageTransition>
   );
 }
 

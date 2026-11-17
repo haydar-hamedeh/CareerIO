@@ -6,6 +6,7 @@ import { requireSession } from "@/lib/auth/session";
 import { loadConversations } from "@/lib/messages/load";
 import { AppHeader } from "@/components/app/app-header";
 import { MessagesClient } from "@/components/messages/messages-client";
+import { PageTransition } from "@/components/page-transition";
 
 export const metadata: Metadata = { title: "Messages · CareerIO" };
 
@@ -13,11 +14,11 @@ type Search = { c?: string };
 
 export default function MessagesPage({ searchParams }: { searchParams: Promise<Search> }) {
   return (
-    <div className="min-h-dvh w-full">
+    <PageTransition>
       <Suspense fallback={<MessagesSkeleton />}>
         <Messages searchParams={searchParams} />
       </Suspense>
-    </div>
+    </PageTransition>
   );
 }
 

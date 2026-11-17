@@ -18,6 +18,7 @@ import { mergeSkills, primaryCvSkills } from "@/lib/jobs/cv-skills";
 import { matchProfileHash } from "@/lib/ai/match-score";
 import { workModeLabel } from "@/lib/onboarding/schema";
 import { parseQuestions } from "@/lib/jobs/screening";
+import { PageTransition } from "@/components/page-transition";
 
 export const maxDuration = 120;
 export const metadata: Metadata = { title: "Job · CareerIO" };
@@ -26,11 +27,11 @@ type Props = { params: Promise<{ id: string }> };
 
 export default function JobPage({ params }: Props) {
   return (
-    <div className="min-h-dvh w-full">
+    <PageTransition>
       <Suspense fallback={<JobSkeleton />}>
         <Job params={params} />
       </Suspense>
-    </div>
+    </PageTransition>
   );
 }
 
