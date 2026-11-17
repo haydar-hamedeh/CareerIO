@@ -19,13 +19,14 @@ import { SectionFields, freshState, toPayload, type ProfileState, type SectionKe
 
 const steps = [
   { key: "basics", title: "About you", subtitle: "How employers will see and reach you.", Icon: User, schema: basicsSchema },
+  { key: "education", title: "Education", subtitle: "Your studies. Your major helps us suggest the right skills later. You can skip this.", Icon: GraduationCap, schema: educationSchema },
   { key: "experience", title: "Experience", subtitle: "Your level and the roles you've had. Just starting out? That's fine.", Icon: Briefcase, schema: experienceSchema },
-  { key: "education", title: "Education", subtitle: "Degrees, diplomas or courses. You can skip this.", Icon: GraduationCap, schema: educationSchema },
-  { key: "skills", title: "Skills", subtitle: "We match jobs on these, so be specific.", Icon: ListChecks, schema: skillsSchema },
+  { key: "skills", title: "Skills", subtitle: "Suggested from your education and roles. We match jobs on these, so be specific.", Icon: ListChecks, schema: skillsSchema },
   { key: "preferences", title: "What you want", subtitle: "The kind of job you're looking for.", Icon: Target, schema: preferencesSchema },
 ] as const;
 
-const DRAFT_VERSION = 1;
+// Bumped when the step order changed, so an old saved draft can't land on the wrong step.
+const DRAFT_VERSION = 2;
 const DRAFT_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 type Draft = { v: number; step: number; state: ProfileState; savedAt: number };
 
@@ -127,6 +128,7 @@ export function CandidateWizard({
     value: ProfileState[SectionKey];
     set: (patch: Partial<ProfileState[SectionKey]>) => void;
     err: (path: string) => string | undefined;
+    profile?: ProfileState;
   }) => React.ReactNode;
 
   return (
@@ -192,7 +194,7 @@ export function CandidateWizard({
 
             <div className="mt-8 rounded-[28px] bg-paper p-5 shadow-soft ring-1 ring-line sm:p-8">
               <FormAlert message={formError} />
-              <Fields value={state[current.key]} set={(patch) => update(current.key, patch)} err={err} />
+              <Fields value={state[current.key]} set={(patch) => update(current.key, patch)} err={err} profile={state} />
             </div>
           </motion.div>
         </AnimatePresence>

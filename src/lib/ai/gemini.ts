@@ -122,6 +122,9 @@ export async function generateJson<S extends z.ZodType>(opts: JsonOptions<S>): P
           error_code: parsed.success ? undefined : "invalid_output",
         });
         if (parsed.success) return { data: parsed.data, model };
+        if (process.env.AI_DEBUG) {
+          console.error(`[ai:${opts.feature}] ${model} invalid output`, parsed.error.issues.slice(0, 4), "\n", text.slice(0, 500));
+        }
         if (attempt === 1) break;
       } catch (e) {
         const code = e instanceof ApiError ? `http_${e.status}` : e instanceof Error ? e.name : "unknown";

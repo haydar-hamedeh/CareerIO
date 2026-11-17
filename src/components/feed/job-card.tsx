@@ -3,10 +3,12 @@
 import Link from "next/link";
 import { useState, useTransition } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Briefcase, Building2, Check, Clock, FileCheck2, Globe, MapPin, Users, Wallet } from "lucide-react";
+import { ArrowRight, Briefcase, Building2, Check, Clock, FileCheck2, Globe, MapPin, Users, Wallet } from "lucide-react";
 import { AnimatedBookmark, AnimatedChevronDown, useIconTap } from "@/components/animated-icons";
 import { setJobSaved } from "@/app/feed/actions";
 import { ease } from "@/lib/site";
+import { fitTone as tone, parseDescription } from "@/lib/jobs/format";
+import { CompanyAvatar } from "@/components/company/company-avatar";
 
 export type FeedJob = {
   id: string;
@@ -16,6 +18,8 @@ export type FeedJob = {
   skills: string[];
   matched: string[];
   company: string;
+  companyId: string | null;
+  companyLogo: string | null;
   companySize: string | null;
   companyLocation: string | null;
   companyWebsite: string | null;
@@ -40,69 +44,6 @@ export type FeedJob = {
   aiWhy?: string | null;
 };
 
-type ParsedSection = {
-  heading: string | null;
-  bullets: string[];
-  paragraphs: string[];
-};
-
-const palette = ["bg-mint text-forest-deep", "bg-sun/40 text-ink", "bg-coral/15 text-[#b4391f]", "bg-forest text-white", "bg-ink text-sand"];
-
-function tone(pct: number) {
-  if (pct >= 70) return { ring: "var(--forest)", text: "text-forest", label: "Strong fit" };
-  if (pct >= 40) return { ring: "#d99a1e", text: "text-[#a16207]", label: "Partial fit" };
-  return { ring: "var(--coral)", text: "text-[#c2410c]", label: "Stretch" };
-}
-
-function parseDescription(description: string, fallbackRequirements: string[]) {
-  const blocks = description
-    .split(/\n\n+/)
-    .map((b) => b.trim())
-    .filter(Boolean);
-
-  const [intro = "", ...restBlocks] = blocks;
-  const sections: ParsedSection[] = [];
-  let hasRequirementsSection = false;
-
-  for (const block of restBlocks) {
-    const lines = block
-      .split("\n")
-      .map((l) => l.trim())
-      .filter(Boolean);
-    if (!lines.length) continue;
-
-    let heading: string | null = null;
-    let body = lines;
-
-    if (lines[0].endsWith(":") && lines[0].length <= 60) {
-      heading = lines[0].slice(0, -1);
-      body = lines.slice(1);
-      if (heading.toLowerCase().includes("requirement") || heading.toLowerCase().includes("looking for")) {
-        hasRequirementsSection = true;
-      }
-    }
-
-    const bullets: string[] = [];
-    const paragraphs: string[] = [];
-    for (const line of body) {
-      if (line.startsWith("- ")) bullets.push(line.slice(2).trim());
-      else paragraphs.push(line);
-    }
-
-    sections.push({ heading, bullets, paragraphs });
-  }
-
-  if (!hasRequirementsSection && fallbackRequirements.length > 0) {
-    sections.push({
-      heading: "Requirements",
-      bullets: fallbackRequirements,
-      paragraphs: [],
-    });
-  }
-
-  return { intro, sections };
-}
-
 export function JobCard({ job, index, canGrade = false }: { job: FeedJob; index: number; canGrade?: boolean }) {
   const [open, setOpen] = useState(false);
   const [saved, setSaved] = useState(job.saved);
@@ -110,7 +51,6 @@ export function JobCard({ job, index, canGrade = false }: { job: FeedJob; index:
   const expandTap = useIconTap();
   const saveTap = useIconTap();
   const matched = new Set(job.matched.map((s) => s.toLowerCase()));
-  const avatar = palette[job.company.length % palette.length];
   const { intro, sections } = parseDescription(job.description, job.requirements);
 
   const toggleSave = () => {
@@ -133,18 +73,26 @@ export function JobCard({ job, index, canGrade = false }: { job: FeedJob; index:
       className="rounded-[24px] bg-paper p-5 shadow-soft ring-1 ring-line transition-shadow duration-300 hover:shadow-lift sm:p-6"
     >
       <header className="flex items-start gap-3.5">
-        <span aria-hidden className={`grid h-12 w-12 shrink-0 place-items-center rounded-2xl font-display text-lg font-extrabold ${avatar}`}>
-          {job.company[0]}
-        </span>
+        <CompanyAvatar name={job.company} logoPath={job.companyLogo} />
         <div className="min-w-0 flex-1">
           <p className="flex flex-wrap items-center gap-x-1.5 text-[13.5px] text-muted">
-            <span className="font-semibold text-ink">{job.company}</span>
+            {job.companyId ? (
+              <Link href={`/companies/${job.companyId}`} className="font-semibold text-ink hover:underline">
+                {job.company}
+              </Link>
+            ) : (
+              <span className="font-semibold text-ink">{job.company}</span>
+            )}
             {job.companySize && <span>· {job.companySize} people</span>}
             <span className="inline-flex items-center gap-1">
               · <Clock size={12} aria-hidden /> {job.posted}
             </span>
           </p>
-          <h2 className="mt-0.5 font-display text-[1.2rem] leading-snug font-bold tracking-tight">{job.title}</h2>
+          <h2 className="mt-0.5 font-display text-[1.2rem] leading-snug font-bold tracking-tight">
+            <Link href={`/jobs/${job.id}`} className="rounded-md transition-colors hover:text-forest">
+              {job.title}
+            </Link>
+          </h2>
         </div>
         {job.pct !== null && <MatchRing pct={job.ai?.score ?? job.pct} ai={Boolean(job.ai)} />}
       </header>
@@ -283,7 +231,7 @@ export function JobCard({ job, index, canGrade = false }: { job: FeedJob; index:
           {...expandTap}
           className="inline-flex items-center gap-1.5 rounded-full px-3 py-2 text-[14px] font-semibold text-forest transition-colors hover:bg-mint/60"
         >
-          {open ? "Show less" : "See full job"}
+          {open ? "Show less" : "Quick look"}
           <AnimatedChevronDown size={16} open={open} />
         </motion.button>
         <div className="flex items-center gap-2">
@@ -309,6 +257,13 @@ export function JobCard({ job, index, canGrade = false }: { job: FeedJob; index:
           <AnimatedBookmark size={15} filled={saved} />
           {saved ? "Saved" : "Save"}
         </motion.button>
+        <Link
+          href={`/jobs/${job.id}`}
+          className="inline-flex items-center gap-1.5 rounded-full bg-forest px-4 py-2 text-[14px] font-semibold text-white transition-colors hover:bg-forest-deep"
+        >
+          View job
+          <ArrowRight size={14} aria-hidden />
+        </Link>
         </div>
       </footer>
     </motion.article>
@@ -324,7 +279,7 @@ function Meta({ icon, children }: { icon: React.ReactNode; children: React.React
   );
 }
 
-function MatchRing({ pct, ai = false }: { pct: number; ai?: boolean }) {
+export function MatchRing({ pct, ai = false }: { pct: number; ai?: boolean }) {
   const r = 20;
   const c = 2 * Math.PI * r;
   const t = tone(pct);

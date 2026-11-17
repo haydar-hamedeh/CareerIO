@@ -22,6 +22,7 @@ await db.exec(`
   create table storage.objects (id uuid primary key default gen_random_uuid(), bucket_id text, name text);
   alter table storage.objects enable row level security;
   grant select, insert, update, delete on storage.objects to authenticated;
+  create publication supabase_realtime;
   create or replace function public.rls_auto_enable() returns event_trigger language plpgsql as $$ begin end $$;
   create function storage.foldername(name text) returns text[] language sql immutable as
     $$ select (string_to_array(name, '/'))[1:array_length(string_to_array(name, '/'), 1) - 1] $$;
@@ -172,6 +173,76 @@ r = await as(B, `select name from storage.objects`);
 check("storage: other candidate cannot list A's files", r.rows?.length === 0, JSON.stringify(r));
 const bucket = (await db.query(`select public from storage.buckets where id = 'cvs'`)).rows[0];
 check("cvs bucket is private", bucket?.public === false, JSON.stringify(bucket));
+
+// Messaging, blocks, reports, talent search and invites ---------------------------------------------------
+await db.exec(`update public.profiles set onboarded_at = now() where role = 'candidate'`);
+
+r = await as(A, `insert into public.conversations (application_id, employer_id, candidate_id, job_id, job_title) values ('${app}', '${E}', '${A}', '${job}', 'Frontend Developer')`);
+check("candidate cannot start a conversation", Boolean(r.error), JSON.stringify(r));
+r = await as(E, `insert into public.conversations (application_id, employer_id, candidate_id, job_id, job_title) values ('${app}', '${E}', '${A}', '${job}', 'Frontend Developer') returning id`);
+const conv = r.rows?.[0]?.id;
+check("company starts a conversation with an applicant", Boolean(conv), JSON.stringify(r));
+r = await as(E, `insert into public.conversations (application_id, employer_id, candidate_id, job_id, job_title) values (null, '${E}', '${B}', '${job}', 'x')`);
+check("conversation needs a real application", Boolean(r.error), JSON.stringify(r));
+r = await as(E, `insert into public.messages (conversation_id, sender_id, body) values ('${conv}', '${E}', 'Hello A')`);
+check("company sends the first message", !r.error, JSON.stringify(r));
+r = await as(A, `select kind from public.notifications`);
+check("message notifies the applicant", r.rows?.some((n) => n.kind === "message"), JSON.stringify(r));
+r = await as(A, `insert into public.messages (conversation_id, sender_id, body) values ('${conv}', '${A}', 'Hi, thanks')`);
+check("applicant can reply", !r.error, JSON.stringify(r));
+r = await as(B, `select id from public.messages`);
+check("outsider cannot read messages", r.rows?.length === 0, JSON.stringify(r));
+r = await as(B, `insert into public.messages (conversation_id, sender_id, body) values ('${conv}', '${B}', 'intruding')`);
+check("outsider cannot send messages", Boolean(r.error), JSON.stringify(r));
+
+r = await as(A, `insert into public.conversation_blocks (conversation_id, blocker_id) values ('${conv}', '${A}')`);
+check("participant can block a conversation", !r.error, JSON.stringify(r));
+r = await as(E, `insert into public.messages (conversation_id, sender_id, body) values ('${conv}', '${E}', 'still there?')`);
+check("blocked person cannot send", Boolean(r.error), JSON.stringify(r));
+r = await as(E, `select 1 from public.conversation_blocks`);
+check("blocked person cannot see the block", r.rows?.length === 0, JSON.stringify(r));
+r = await as(B, `insert into public.conversation_blocks (conversation_id, blocker_id) values ('${conv}', '${B}')`);
+check("outsider cannot block someone else's conversation", Boolean(r.error), JSON.stringify(r));
+r = await as(A, `delete from public.conversation_blocks where conversation_id = '${conv}'`);
+r = await as(E, `insert into public.messages (conversation_id, sender_id, body) values ('${conv}', '${E}', 'back again')`);
+check("unblocking lets messages through again", !r.error, JSON.stringify(r));
+
+r = await as(A, `insert into public.message_reports (reporter_id, conversation_id, reason) values ('${A}', '${conv}', 'spam')`);
+check("participant can report a conversation", !r.error, JSON.stringify(r));
+r = await as(A, `select id from public.message_reports`);
+check("reports are not readable by users", Boolean(r.error), JSON.stringify(r));
+r = await as(B, `insert into public.message_reports (reporter_id, conversation_id, reason) values ('${B}', '${conv}', 'spam')`);
+check("outsider cannot report a conversation", Boolean(r.error), JSON.stringify(r));
+
+r = await as(A, `select user_id from public.search_candidates('', 10)`);
+check("candidates cannot search talent", r.rows?.length === 0, JSON.stringify(r));
+r = await as(E, `select * from public.search_candidates('', 10)`);
+check("employer finds discoverable candidates (A, B and the downgraded X)", r.rows?.length === 3, JSON.stringify(r));
+check("talent search never returns phone or email", r.rows?.every((x) => !("phone" in x) && !("email" in x)), JSON.stringify(r.rows?.[0]));
+r = await as(B, `insert into public.user_settings (user_id, discoverable) values ('${B}', false)`);
+check("candidate can opt out of search", !r.error, JSON.stringify(r));
+r = await as(E, `select user_id from public.search_candidates('', 10)`);
+check("opted-out candidate is hidden from search", r.rows?.length === 2 && !r.rows.some((x) => x.user_id === B), JSON.stringify(r));
+r = await as(A, `update public.user_settings set last_alert_at = now() where user_id = '${A}'`);
+check("candidate cannot write last_alert_at", Boolean(r.error) || r.affected === 0, JSON.stringify(r));
+
+r = await as(E, `insert into public.job_invites (job_id, candidate_id, employer_id, message) values ('${job}', '${B}', '${E}', 'hi')`);
+check("cannot invite an opted-out candidate", Boolean(r.error), JSON.stringify(r));
+r = await as(A, `insert into public.job_invites (job_id, candidate_id, employer_id) values ('${job}', '${A}', '${A}')`);
+check("candidate cannot send invites", Boolean(r.error), JSON.stringify(r));
+r = await as(E, `insert into public.job_invites (job_id, candidate_id, employer_id, message) values ('${job}', '${A}', '${E}', 'Come apply')`);
+check("employer invites a discoverable candidate", !r.error, JSON.stringify(r));
+r = await as(A, `select kind from public.notifications where kind = 'invite'`);
+check("invite notifies the candidate", r.rows?.length === 1, JSON.stringify(r));
+r = await as(B, `select 1 from public.job_invites`);
+check("other candidates cannot read invites", r.rows?.length === 0, JSON.stringify(r));
+
+r = await as(E, `insert into storage.objects (bucket_id, name) values ('company-logos', '${E}/logo.png')`);
+check("storage: employer uploads own logo", !r.error, JSON.stringify(r));
+r = await as(E, `insert into storage.objects (bucket_id, name) values ('company-logos', '${B}/logo.png')`);
+check("storage: employer blocked from other logo folder", Boolean(r.error), JSON.stringify(r));
+r = await as(B, `insert into storage.objects (bucket_id, name) values ('company-logos', '${B}/logo.png')`);
+check("storage: candidate cannot upload company logos", Boolean(r.error), JSON.stringify(r));
 
 await db.exec(`delete from auth.users where id = '${A}'`);
 const left = (await db.query(`select

@@ -23,7 +23,12 @@ export default function OnboardingPage() {
 async function Onboarding() {
   await connection();
   const session = await requireSession("/onboarding");
-  if (session.onboarded) redirect("/feed");
+  if (session.onboarded) {
+    if (session.role !== "employer") redirect("/feed");
+    // An employer who finished setup but has no company still needs to create it, so don't bounce them back.
+    const { data: company } = await session.supabase.from("companies").select("id").eq("owner_id", session.user.id).maybeSingle();
+    if (company) redirect("/recruiter");
+  }
   const geo = (await headers()).get("x-vercel-ip-country")?.toUpperCase() ?? null;
 
   return (

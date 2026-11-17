@@ -1,27 +1,6 @@
-const aliases: Record<string, string> = {
-  reactjs: "react", "react.js": "react",
-  nextjs: "next.js", next: "next.js",
-  node: "node.js", nodejs: "node.js",
-  js: "javascript", es6: "javascript",
-  ts: "typescript",
-  postgres: "postgresql", psql: "postgresql",
-  tailwind: "tailwind css", tailwindcss: "tailwind css",
-  "ms excel": "excel", "microsoft excel": "excel",
-  "rest": "rest apis", "rest api": "rest apis", "restful apis": "rest apis",
-  "ui": "ui design", "ux": "ux design",
-  k8s: "kubernetes",
-  "power-bi": "power bi", powerbi: "power bi",
-  ml: "machine learning",
-  "c sharp": "c#", csharp: "c#",
-  golang: "go",
-  vuejs: "vue", "vue.js": "vue",
-  "adobe xd": "xd",
-};
+import { expandSkills, normSkill } from "./skills";
 
-export const normSkill = (s: string) => {
-  const k = s.trim().toLowerCase().replace(/\s+/g, " ");
-  return aliases[k] ?? k;
-};
+export { normSkill };
 
 const STOP = new Set([
   "junior", "senior", "mid", "lead", "head", "of", "and", "the", "a", "an", "intern", "internship", "&", "-", "(", ")",
@@ -63,10 +42,29 @@ export type FitInput = {
   semantic?: number | null;
 };
 
+/**
+ * Highest score allowed for the share of the job's skills the person covers. A semantic or AI score can be generous
+ * when the wording looks alike, but a job that lists 5 skills and a person who has 2 of them is not a 90% fit.
+ * Jobs with fewer than 3 listed skills are not capped (too little to judge by).
+ */
+function coverageCap(matched: number, total: number) {
+  if (total < 3) return 100;
+  const c = matched / total;
+  if (c >= 1) return 100;
+  if (c >= 0.8) return 92;
+  if (c >= 0.6) return 84;
+  if (c >= 0.4) return 72;
+  if (c >= 0.2) return 58;
+  return 45;
+}
+
 export type Fit = {
   score: number;
+  /** Ceiling for this job's score, from how many of its skills are covered. Apply it to AI scores too. */
+  cap: number;
   matched: string[];
   missing: string[];
+  via: { skill: string; from: string }[];
   skill: number;
   role: number;
   modeOk: boolean;
@@ -75,9 +73,14 @@ export type Fit = {
 };
 
 export function computeFit(i: FitInput): Fit {
-  const mine = new Set(i.skills.map(normSkill));
+  const mine = expandSkills(i.skills);
   const matched = i.jobSkills.filter((s) => mine.has(normSkill(s)));
   const missing = i.jobSkills.filter((s) => !mine.has(normSkill(s)));
+  // Job skills you have only because another skill of yours implies them (React because of Next.js).
+  const via = matched.flatMap((s) => {
+    const from = mine.get(normSkill(s))?.from;
+    return from ? [{ skill: s, from }] : [];
+  });
   const skill = i.jobSkills.length ? matched.length / i.jobSkills.length : 0;
   const role = roleSimilarity(i.jobTitle, [...i.desiredRoles, i.headline].filter(Boolean));
   const modeOk = i.workModes.length === 0 || i.workModes.includes(i.jobMode);
@@ -93,9 +96,13 @@ export function computeFit(i: FitInput): Fit {
     semantic === null
       ? 0.55 * skill + 0.25 * role + 0.12 * mode + 0.08 * levelScore
       : 0.4 * skill + 0.3 * semantic + 0.15 * role + 0.1 * mode + 0.05 * levelScore;
-  const score = Math.round(100 * raw);
-  return { score, matched, missing, skill, role, modeOk, levelGap, semantic };
+  const cap = coverageCap(matched.length, i.jobSkills.length);
+  const score = Math.min(cap, Math.round(100 * raw));
+  return { score, cap, matched, missing, via, skill, role, modeOk, levelGap, semantic };
 }
+
+/** An AI score, kept under the skill-coverage ceiling so the number stays honest and the same everywhere. */
+export const capScore = (score: number, f: Pick<Fit, "cap">) => Math.min(score, f.cap);
 
 export function fitReason(f: Fit, total: number) {
   const parts: string[] = [];
@@ -106,6 +113,7 @@ export function fitReason(f: Fit, total: number) {
       parts.push(`${f.matched.length} of ${total} skills · Missing: ${miss}`);
     }
   }
+  if (f.via.length) parts.push(`Counts ${f.via.slice(0, 2).map((v) => `${v.skill} (from ${v.from})`).join(", ")}`);
   if (f.role >= 0.5) parts.push("Fits a role you want");
   if (!f.modeOk) parts.push("Work mode differs from your preference");
   return parts.join(" · ");

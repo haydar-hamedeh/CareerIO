@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Plus, Trash2 } from "lucide-react";
 import { Field } from "@/components/auth/fields";
@@ -10,14 +11,19 @@ import {
   workModes,
   type CandidateOnboarding,
 } from "@/lib/onboarding/schema";
-import { languageSuggestions, locationSuggestions, roleSuggestions, skillSuggestions } from "@/lib/onboarding/suggestions";
+import { languageSuggestions, locationSuggestions, roleSuggestions } from "@/lib/onboarding/suggestions";
+import { allSkills, commonSkills, inferFields, skillFields } from "@/lib/onboarding/skill-fields";
+import { rolesByField } from "@/lib/onboarding/roles-by-field";
+import { useOccupations } from "@/lib/onboarding/use-occupations";
 import { degrees, majors } from "@/lib/onboarding/education";
-import { roleCatalog, skillCatalog } from "@/lib/onboarding/skills-catalog";
-import { countries, countryByCode, countryByName } from "@/lib/geo/countries";
+import { roleCatalog } from "@/lib/onboarding/skills-catalog";
+import { countryByCode, countryByName } from "@/lib/geo/countries";
+import { splitPhone } from "@/lib/geo/phone";
 import { ease } from "@/lib/site";
 import { ChipInput } from "./chip-input";
 import { ChoiceGroup, TextArea } from "./controls";
 import { CountryCombobox, PhoneField } from "./country-combobox";
+import { SchoolField } from "./school-field";
 import { SearchSelect } from "./search-select";
 
 export type Position = { title: string; company: string; start: string; end: string; current: boolean; summary: string };
@@ -54,6 +60,8 @@ export type SectionProps<K extends SectionKey> = {
   value: ProfileState[K];
   set: (patch: Partial<ProfileState[K]>) => void;
   err: (path: string) => string | undefined;
+  /** The whole profile being edited, for steps that adapt to other answers (e.g. skills by field of study). */
+  profile?: ProfileState;
 };
 
 export const emptyPosition: Position = { title: "", company: "", start: "", end: "", current: false, summary: "" };
@@ -104,21 +112,6 @@ export type ProfileRow = {
   salary_max: number | null;
   salary_currency: string | null;
 };
-
-function splitPhone(phone: string | null, countryCode: string | null) {
-  if (!phone) return { dialCode: countryCode, national: "" };
-  const m = phone.match(/^\+(\d{1,4})\s*(.*)$/);
-  if (!m) return { dialCode: countryCode, national: phone };
-  const digits = m[1] + m[2].replace(/\D/g, "");
-  const own = countryCode ? countryByCode.get(countryCode) : undefined;
-  const match =
-    own && digits.startsWith(own.dial)
-      ? own
-      : [...countries].sort((a, b) => b.dial.length - a.dial.length).find((c) => digits.startsWith(c.dial));
-  if (!match) return { dialCode: countryCode, national: m[2] };
-  const rest = phone.replace(/^\+/, "").replace(new RegExp(`^${match.dial}\\s*`), "");
-  return { dialCode: match.code, national: rest };
-}
 
 const asArray = <T,>(v: unknown): T[] => (Array.isArray(v) ? (v as T[]) : []);
 
@@ -281,7 +274,7 @@ export function ExperienceFields({ value, set, err }: SectionProps<"experience">
   );
 }
 
-export function EducationFields({ value, set, err }: SectionProps<"education">) {
+export function EducationFields({ value, set, err, profile }: SectionProps<"education">) {
   return (
     <ListEditor
       title="Education"
@@ -292,7 +285,14 @@ export function EducationFields({ value, set, err }: SectionProps<"education">) 
       emptyText="Nothing added. You can continue without education."
       render={(e, i, setItem) => (
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field className="sm:col-span-2" label="School or university" value={e.school} onChange={(ev) => setItem({ school: ev.target.value })} error={err(`education.${i}.school`)} />
+          <SchoolField
+            className="sm:col-span-2"
+            label="School or university"
+            value={e.school}
+            onChange={(school) => setItem({ school })}
+            countryCode={profile?.basics.countryCode ?? null}
+            error={err(`education.${i}.school`)}
+          />
           <SearchSelect
             label="Degree"
             placeholder="Choose a degree"
@@ -319,19 +319,76 @@ export function EducationFields({ value, set, err }: SectionProps<"education">) 
   );
 }
 
-export function SkillsFields({ value, set, err }: SectionProps<"skills">) {
+/** Field buttons shared by the skills and roles steps. Fields guessed from the person's answers come first. */
+function FieldPills({ inferred, activeId, onPick, hint }: { inferred: string[]; activeId: string | null; onPick: (id: string) => void; hint: string }) {
+  const order = [...inferred, ...skillFields.map((f) => f.id).filter((id) => !inferred.includes(id))];
+  return (
+    <div>
+      <p className="text-[14px] font-semibold text-ink">Your field</p>
+      <p className="mt-0.5 text-[13px] text-muted">{hint}</p>
+      <div className="mt-3 flex flex-wrap gap-1.5" role="group" aria-label="Field">
+        {order.map((id) => {
+          const f = skillFields.find((x) => x.id === id)!;
+          const on = id === activeId;
+          return (
+            <button
+              key={id}
+              type="button"
+              aria-pressed={on}
+              onClick={() => onPick(on ? "" : id)}
+              className={`rounded-full px-3.5 py-1.5 text-[13px] font-semibold transition-colors ${
+                on ? "bg-forest text-white" : inferred.includes(id) ? "bg-mint text-forest-deep hover:bg-mint/70" : "bg-white text-ink/75 ring-1 ring-line hover:ring-ink/25"
+              }`}
+            >
+              {f.label}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+export function SkillsFields({ value, set, err, profile }: SectionProps<"skills">) {
+  const inferred = useMemo(
+    () =>
+      profile
+        ? inferFields({
+            education: profile.education.education,
+            desiredRoles: profile.preferences.desiredRoles,
+            headline: profile.basics.headline,
+            positions: profile.experience.positions,
+          })
+        : [],
+    [profile],
+  );
+  const [picked, setPicked] = useState<string | null>(null);
+  const activeId = picked ?? inferred[0] ?? null;
+  const active = skillFields.find((f) => f.id === activeId) ?? null;
+
   return (
     <div className="space-y-7">
-      <ChipInput
-        label="Skills"
-        hint="Type a skill and press Enter, or tap a suggestion. Add at least 3."
-        placeholder="e.g. React, Excel, Patient care"
-        value={value.skills}
-        onChange={(skills) => set({ skills })}
-        suggestions={skillSuggestions}
-        catalog={skillCatalog}
-        error={err("skills")}
+      <FieldPills
+        inferred={inferred}
+        activeId={activeId}
+        onPick={setPicked}
+        hint={inferred.length > 0 ? "Based on your education and experience. Pick another field to see its skills." : "Pick a field to see the skills employers look for."}
       />
+      <div>
+        <ChipInput
+          key={activeId ?? "common"}
+          label="Skills"
+          hint="Type a skill and press Enter, or tap a suggestion. Add at least 3."
+          placeholder="e.g. React, Excel, Patient care"
+          value={value.skills}
+          onChange={(skills) => set({ skills })}
+          suggestions={active ? active.skills : commonSkills}
+          catalog={allSkills}
+          suggestionLimit={14}
+          error={err("skills")}
+        />
+        <p className="mt-2.5 text-[11.5px] text-muted">Skill suggestions use the ESCO classification of the European Commission.</p>
+      </div>
       <ChipInput
         label="Languages"
         placeholder="e.g. Arabic, English"
@@ -345,16 +402,47 @@ export function SkillsFields({ value, set, err }: SectionProps<"skills">) {
   );
 }
 
-export function PreferencesFields({ value, set, err }: SectionProps<"preferences">) {
+export function PreferencesFields({ value, set, err, profile }: SectionProps<"preferences">) {
+  // Roles follow the person's field, guessed from education, experience and the skills they picked (not from roles themselves).
+  const inferred = useMemo(
+    () =>
+      profile
+        ? inferFields({
+            education: profile.education.education,
+            desiredRoles: [],
+            headline: profile.basics.headline,
+            positions: profile.experience.positions,
+            skills: profile.skills.skills,
+          })
+        : [],
+    [profile],
+  );
+  const [picked, setPicked] = useState<string | null>(null);
+  const activeId = picked ?? inferred[0] ?? null;
+  const occupations = useOccupations();
+  const roleSearch = useMemo(() => {
+    const seen = new Map<string, string>();
+    for (const r of [...rolesByField[activeId ?? ""] ?? [], ...roleCatalog, ...occupations]) if (!seen.has(r.toLowerCase())) seen.set(r.toLowerCase(), r);
+    return [...seen.values()];
+  }, [occupations, activeId]);
+
   return (
     <div className="space-y-7">
+      <FieldPills
+        inferred={inferred}
+        activeId={activeId}
+        onPick={setPicked}
+        hint={inferred.length > 0 ? "Based on your studies and skills. Pick another field to see its roles." : "Pick a field to see common roles."}
+      />
       <ChipInput
+        key={activeId ?? "common"}
         label="Roles you want"
-        placeholder="e.g. Frontend Developer"
+        placeholder="e.g. Psychologist, Frontend Developer"
         value={value.desiredRoles}
         onChange={(desiredRoles) => set({ desiredRoles })}
-        suggestions={roleSuggestions}
-        catalog={roleCatalog}
+        suggestions={activeId && rolesByField[activeId] ? rolesByField[activeId] : roleSuggestions}
+        catalog={roleSearch}
+        suggestionLimit={12}
         max={10}
         error={err("desiredRoles")}
       />

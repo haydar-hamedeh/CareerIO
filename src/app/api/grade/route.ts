@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { admin, hasAdmin } from "@/lib/supabase/admin";
 import { AiBusyError, AiUnavailableError } from "@/lib/ai/gemini";
 import { limits, rateLimit } from "@/lib/ai/rate-limit";
+import { looksLikeInjection } from "@/lib/ai/safety";
 import {
   GRADE_VERSION,
   PARSE_VERSION,
@@ -34,6 +35,9 @@ export async function POST(request: NextRequest) {
   const parsedInput = input.safeParse(await request.json().catch(() => null));
   if (!parsedInput.success) return NextResponse.json({ error: "Invalid request." }, { status: 400 });
   const { cvId, target: t } = parsedInput.data;
+  if (t.kind === "role" && looksLikeInjection(t.role)) {
+    return NextResponse.json({ error: "That doesn't look like a job title. Try a real role, e.g. “Frontend Developer”." }, { status: 422 });
+  }
 
   const supabase = await createClient();
   const { data: auth } = await supabase.auth.getUser();

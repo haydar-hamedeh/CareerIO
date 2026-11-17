@@ -14,11 +14,14 @@ type Props = {
   placeholder?: string;
   max?: number;
   error?: string;
+  /** How many suggestions to show before "Show more". */
+  suggestionLimit?: number;
 };
 
-export function ChipInput({ label, hint, value, onChange, suggestions = [], catalog, placeholder, max = 40, error }: Props) {
+export function ChipInput({ label, hint, value, onChange, suggestions = [], catalog, placeholder, max = 40, error, suggestionLimit = 12 }: Props) {
   const id = useId();
   const [draft, setDraft] = useState("");
+  const [expanded, setExpanded] = useState(false);
   const lower = useMemo(() => new Set(value.map((v) => v.toLowerCase())), [value]);
 
   const add = (raw: string) => {
@@ -31,10 +34,12 @@ export function ChipInput({ label, hint, value, onChange, suggestions = [], cata
 
   const q = draft.trim().toLowerCase();
   const pool = q ? (catalog ?? suggestions) : suggestions;
-  const matches = pool
+  const available = pool
     .filter((s) => !lower.has(s.toLowerCase()) && (!q || s.toLowerCase().includes(q)))
-    .sort((a, b) => (q ? Number(!a.toLowerCase().startsWith(q)) - Number(!b.toLowerCase().startsWith(q)) : 0))
-    .slice(0, q ? 10 : 12);
+    .sort((a, b) => (q ? Number(!a.toLowerCase().startsWith(q)) - Number(!b.toLowerCase().startsWith(q)) : 0));
+  const limit = q ? 10 : expanded ? 80 : suggestionLimit;
+  const matches = available.slice(0, limit);
+  const hidden = q ? 0 : Math.max(0, available.length - matches.length);
 
   return (
     <div>
@@ -102,6 +107,8 @@ export function ChipInput({ label, hint, value, onChange, suggestions = [], cata
             <button
               key={s}
               type="button"
+              // Keep focus in the text box: otherwise its blur handler would add the half-typed text ("ps") as its own chip first.
+              onMouseDown={(e) => e.preventDefault()}
               onClick={() => add(s)}
               className="inline-flex items-center gap-1 rounded-full bg-white px-3 py-1.5 text-[13px] font-medium text-ink/80 ring-1 ring-line transition-[box-shadow,color,transform] hover:text-ink hover:ring-forest/40 active:scale-95"
             >
@@ -109,6 +116,16 @@ export function ChipInput({ label, hint, value, onChange, suggestions = [], cata
               {s}
             </button>
           ))}
+          {hidden > 0 && (
+            <button
+              type="button"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => setExpanded(true)}
+              className="inline-flex items-center rounded-full px-3 py-1.5 text-[13px] font-semibold text-forest transition-colors hover:bg-mint/60"
+            >
+              Show {hidden} more
+            </button>
+          )}
         </div>
       )}
     </div>

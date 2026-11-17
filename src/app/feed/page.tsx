@@ -9,20 +9,13 @@ import { AppHeader } from "@/components/app/app-header";
 import type { FeedJob } from "@/components/feed/job-card";
 import { FeedClient } from "@/components/feed/feed-client";
 import { computeFit, currentTime, fitReason, formatSalary, timeAgo } from "@/lib/jobs/match";
+import { levelShort, typeLabel } from "@/lib/jobs/format";
+import { mergeSkills, primaryCvSkills } from "@/lib/jobs/cv-skills";
 import { workModeLabel } from "@/lib/onboarding/schema";
 
 export const metadata: Metadata = { title: "Your job feed · CareerIO" };
 
 type Search = { q?: string; mode?: string; level?: string; field?: string; saved?: string; sort?: string; welcome?: string };
-
-const typeLabel: Record<string, string> = {
-  full_time: "Full-time",
-  part_time: "Part-time",
-  contract: "Contract",
-  internship: "Internship",
-  temporary: "Temporary",
-};
-const levelShort: Record<string, string> = { intern: "Intern", junior: "Junior", mid: "Mid-level", senior: "Senior", lead: "Lead" };
 
 export default function FeedPage({ searchParams }: PageProps<"/feed">) {
   return (
@@ -39,7 +32,9 @@ async function Feed({ searchParams }: { searchParams: Promise<Search> }) {
   const sp = await searchParams;
   const session = await requireSession("/feed");
   if (!session.onboarded) redirect("/onboarding");
-  const { supabase, user, role, fullName } = session;
+  if (session.role === "employer") redirect("/recruiter");
+  const { supabase, user, fullName } = session;
+  const role: string = session.role;
 
   const [{ data: profile }, { data: company }, { data: jobsRaw }, { data: savedRows }] = await Promise.all([
     role === "candidate"
@@ -55,7 +50,7 @@ async function Feed({ searchParams }: { searchParams: Promise<Search> }) {
     supabase
       .from("jobs")
       .select(
-        "id, title, description, requirements, skills, field, seniority, employment_type, work_mode, location, salary_min, salary_max, salary_currency, published_at, is_demo, companies(name, size, location, website, description)",
+        "id, title, description, requirements, skills, field, seniority, employment_type, work_mode, location, salary_min, salary_max, salary_currency, published_at, is_demo, companies(id, name, size, location, website, description, logo_path)",
       )
       .eq("status", "open")
       .order("published_at", { ascending: false })
@@ -64,6 +59,9 @@ async function Feed({ searchParams }: { searchParams: Promise<Search> }) {
   ]);
 
   const mySkills: string[] = profile?.skills ?? [];
+  // Matching counts the skills on the person's CV too, not only the ones typed into the profile.
+  const cvSkills = role === "candidate" ? await primaryCvSkills(supabase, user.id) : [];
+  const matchSkills = mergeSkills(mySkills, cvSkills);
   const myModes: string[] = profile?.work_modes ?? [];
   const myRoles: string[] = profile?.desired_roles ?? [];
   const saved = new Set((savedRows ?? []).map((r) => r.job_id as string));
@@ -79,6 +77,8 @@ async function Feed({ searchParams }: { searchParams: Promise<Search> }) {
   type Row = NonNullable<typeof jobsRaw>[number];
   const companyOf = (j: Row) =>
     (Array.isArray(j.companies) ? j.companies[0] : j.companies) as {
+      id: string;
+      logo_path: string | null;
       name: string;
       size: string | null;
       location: string | null;
@@ -94,7 +94,7 @@ async function Feed({ searchParams }: { searchParams: Promise<Search> }) {
       jobSkills: j.skills ?? [],
       jobMode: j.work_mode,
       jobLevel: j.seniority,
-      skills: mySkills,
+      skills: matchSkills,
       desiredRoles: myRoles,
       headline: profile?.headline ?? "",
       workModes: myModes,
@@ -112,6 +112,8 @@ async function Feed({ searchParams }: { searchParams: Promise<Search> }) {
     skills: j.skills ?? [],
     matched: m.matched,
     company: c?.name ?? "Company",
+    companyId: c?.id ?? null,
+    companyLogo: c?.logo_path ?? null,
     companySize: c?.size ?? null,
     companyLocation: c?.location ?? null,
     companyWebsite: c?.website ?? null,

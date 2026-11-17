@@ -21,4 +21,13 @@ export const limits = {
   search: { limit: 40, windowMs: 60_000 },
   match: { limit: 12, windowMs: 60 * 60_000 },
   grade: { limit: 8, windowMs: 60 * 60_000 },
+  chance: { limit: 15, windowMs: 60 * 60_000 },
+  // Recruiters re-running an application review by hand (the first review runs automatically when someone applies).
+  review: { limit: 30, windowMs: 60 * 60_000 },
+  // Chat messages per person: enough for a real conversation, too few for spam.
+  message: { limit: 40, windowMs: 60_000 },
+  // School search: typeahead fires on each keystroke (debounced), so this is generous.
+  schools: { limit: 90, windowMs: 60_000 },
+  // School logos: up to ~40 images per dropdown, cached by the browser for a week.
+  logos: { limit: 400, windowMs: 60_000 },
 } as const;

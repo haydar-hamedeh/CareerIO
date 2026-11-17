@@ -77,7 +77,7 @@ export function Footer() {
         </div>
         <div className="mt-12 flex flex-col gap-4 border-t border-white/10 pt-6 text-[13px] text-sand/50 md:flex-row md:justify-between">
           <p>© 2026 CareerIO. All rights reserved.</p>
-          <p>Making the job hunt feel a little less scary.</p>
+          <p>This service uses the ESCO classification of the European Commission.</p>
         </div>
       </div>
     </footer>

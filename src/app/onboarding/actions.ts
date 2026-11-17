@@ -92,5 +92,5 @@ export async function saveEmployerOnboarding(input: EmployerOnboarding): Promise
     .eq("id", user.id);
   if (pError) return { error: "We couldn't save your profile. Please try again." };
 
-  redirect("/feed?welcome=1");
+  redirect("/recruiter?welcome=1");
 }

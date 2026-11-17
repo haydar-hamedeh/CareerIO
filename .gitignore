@@ -52,3 +52,7 @@ supabase/.temp
 # local tooling
 /.playwright-mcp
 /.claude/screens
+
+# ESCO raw dataset (large; generated skills file is committed)
+/data/esco/
+/data/cip/

@@ -1,3 +1,5 @@
+import { cipMajors } from "./majors-cip";
+
 export type Option = { value: string; group: string };
 
 const group = (name: string, values: string[]): Option[] => values.map((value) => ({ value, group: name }));
@@ -46,7 +48,7 @@ export const degrees: Option[] = [
   ...group("Other learning", ["Professional certificate", "Bootcamp", "Online course", "Self-taught"]),
 ];
 
-export const majors: Option[] = [
+const popularMajors: Option[] = [
   ...group("Computing & IT", [
     "Computer Science", "Software Engineering", "Computer Engineering", "Information Technology",
     "Information Systems", "Data Science", "Artificial Intelligence", "Cybersecurity", "Computer Networks",
@@ -90,3 +92,13 @@ export const majors: Option[] = [
   ]),
   ...group("Law", ["Law", "International Law", "Business Law"]),
 ];
+
+// Popular majors first (hand-curated names), then the full CIP list for everything else.
+const popularKeys = new Set(popularMajors.map((m) => m.value.toLowerCase()));
+export const majors: Option[] = [
+  ...popularMajors,
+  ...cipMajors.filter((m) => !popularKeys.has(m.value.toLowerCase())).map((m) => ({ value: m.value, group: m.group })),
+];
+
+/** Skill field id for a major picked from the CIP list (lowercase major name -> field id). */
+export const majorField = new Map(cipMajors.filter((m) => m.field).map((m) => [m.value.toLowerCase(), m.field as string]));

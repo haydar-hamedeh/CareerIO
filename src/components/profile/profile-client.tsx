@@ -9,7 +9,6 @@ import {
   Building2,
   Check,
   FileCheck2,
-  GraduationCap,
   Laptop,
   Loader2,
   Lock,
@@ -22,6 +21,7 @@ import {
 } from "lucide-react";
 import { FormAlert } from "@/components/auth/fields";
 import { Flag } from "@/components/onboarding/country-combobox";
+import { SchoolLogo } from "@/components/onboarding/school-logo";
 import { SectionFields, stateFromRow, toPayload, type ProfileRow, type ProfileState, type SectionKey } from "@/components/onboarding/sections";
 import { updateProfileSection, type CvItem } from "@/app/profile/actions";
 import {
@@ -275,9 +275,7 @@ export function ProfileClient({
             <ul className="grid gap-3 sm:grid-cols-2">
               {state.education.education.map((e, i) => (
                 <li key={i} className="flex gap-3 rounded-2xl bg-white p-4 ring-1 ring-line">
-                  <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-mint text-forest">
-                    <GraduationCap size={18} aria-hidden />
-                  </span>
+                  <SchoolLogo name={e.school} countryCode={state.basics.countryCode} size={40} />
                   <div className="min-w-0">
                     <p className="font-display text-[15px] leading-snug font-bold">{[e.degree, e.field].filter(Boolean).join(" in ")}</p>
                     <p className="mt-0.5 truncate text-[13.5px] text-muted">{e.school}</p>
@@ -589,9 +587,9 @@ function EditDrawer({
   return (
     <AnimatePresence>
       {sectionKey && (
-        <div className="fixed inset-0 z-[60]" role="dialog" aria-modal="true" aria-labelledby="drawer-title" data-lenis-prevent>
+        <div className="fixed inset-0 z-[60] grid place-items-center p-3 sm:p-6" role="dialog" aria-modal="true" aria-labelledby="drawer-title" data-lenis-prevent>
           <motion.div
-            className="absolute inset-0 bg-ink/40"
+            className="absolute inset-0 bg-ink/45 backdrop-blur-sm"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -631,6 +629,7 @@ function DrawerBody({
     value: ProfileState[SectionKey];
     set: (patch: Partial<ProfileState[SectionKey]>) => void;
     err: (path: string) => string | undefined;
+    profile?: ProfileState;
   }) => React.ReactNode;
 
   const save = () => {
@@ -651,11 +650,11 @@ function DrawerBody({
 
   return (
     <motion.div
-      initial={{ x: "100%" }}
-      animate={{ x: 0 }}
-      exit={{ x: "100%" }}
-      transition={{ type: "spring", stiffness: 320, damping: 36 }}
-      className="absolute inset-y-0 right-0 flex w-full max-w-[600px] flex-col bg-sand shadow-lift sm:rounded-l-[32px]"
+      initial={{ opacity: 0, scale: 0.96, y: 14 }}
+      animate={{ opacity: 1, scale: 1, y: 0 }}
+      exit={{ opacity: 0, scale: 0.97, y: 8 }}
+      transition={{ type: "spring", stiffness: 380, damping: 32 }}
+      className="relative flex max-h-[calc(100dvh-1.5rem)] w-full max-w-[660px] flex-col overflow-hidden rounded-[28px] bg-sand shadow-lift ring-1 ring-line sm:max-h-[calc(100dvh-3rem)]"
     >
       <header className="flex items-center justify-between gap-4 border-b border-line px-5 py-4 sm:px-7">
         <div>
@@ -680,9 +679,10 @@ function DrawerBody({
           value={draft[sectionKey]}
           set={(patch) => setDraft((d) => ({ ...d, [sectionKey]: { ...d[sectionKey], ...patch } }))}
           err={(p) => errors[p]}
+          profile={draft}
         />
       </div>
-      <footer className="flex items-center justify-end gap-2 border-t border-line bg-paper px-5 py-4 sm:rounded-bl-[32px] sm:px-7">
+      <footer className="flex items-center justify-end gap-2 border-t border-line bg-paper px-5 py-4 sm:px-7">
         <button type="button" onClick={onClose} disabled={pending} className="inline-flex h-11 items-center rounded-full px-5 font-semibold hover:bg-ink/5">
           Cancel
         </button>

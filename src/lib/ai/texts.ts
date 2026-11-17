@@ -36,7 +36,9 @@ export type ProfileForText = {
   education: unknown;
 };
 
-export function profileText(p: ProfileForText) {
+export function profileText(p: ProfileForText, extraSkills: string[] = []) {
+  // Skills from the person's profile plus the ones on their CV, deduplicated.
+  const skills = [...new Map([...(p.skills ?? []), ...extraSkills].map((x) => [x.trim().toLowerCase(), x.trim()])).values()].filter(Boolean);
   const positions = (Array.isArray(p.experience) ? (p.experience as Position[]) : [])
     .map((x) => [x.title, x.summary].filter(Boolean).join(": "))
     .slice(0, 8);
@@ -45,7 +47,7 @@ export function profileText(p: ProfileForText) {
     `Headline: ${p.headline ?? ""}`,
     `Wants roles: ${(p.desired_roles ?? []).join(", ")}`,
     `Level: ${p.seniority ?? "unknown"}, ${Math.round(Number(p.years_experience ?? 0))} years of experience`,
-    `Skills: ${(p.skills ?? []).join(", ")}`,
+    `Skills: ${skills.join(", ")}`,
     positions.length ? `Experience: ${positions.join("; ")}` : "",
     edu.length ? `Education: ${edu.join("; ")}` : "",
   ]

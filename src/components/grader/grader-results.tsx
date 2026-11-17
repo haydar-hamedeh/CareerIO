@@ -7,6 +7,7 @@ import { AlertTriangle, ArrowRight, CheckCircle2, Crosshair, ListChecks, PenLine
 import { AnimatedCheck, AnimatedCopy, useIconTap } from "@/components/animated-icons";
 import { ScoreRing } from "@/components/ui/score-ring";
 import { ease } from "@/lib/site";
+import { FixList } from "./fix-list";
 import { scoreTone, verdict, type Issue, type Result } from "./types";
 
 const barTone = { forest: "bg-forest", sun: "bg-sun", coral: "bg-coral" } as const;
@@ -104,6 +105,8 @@ export function Results({
         </p>
       </section>
 
+      <FixList r={r} />
+
       {afterHero}
 
       <section className={card}>
@@ -172,7 +175,7 @@ export function Results({
       </section>
 
       {r.issues.length > 0 && (
-        <section className={card}>
+        <section id="lines-to-improve" className={`${card} scroll-mt-24`}>
           <SectionHead
             icon={<PenLine size={18} aria-hidden />}
             title="Lines to improve"
