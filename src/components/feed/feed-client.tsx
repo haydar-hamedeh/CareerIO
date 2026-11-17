@@ -7,7 +7,9 @@ import { JobCard, type FeedJob } from "./job-card";
 import { seniorities, seniorityLabel, workModeLabel, workModes } from "@/lib/onboarding/schema";
 import { ease } from "@/lib/site";
 
-type Filters = { q: string; mode: string; level: string; field: string; saved: boolean; sort: "match" | "recent" };
+type Filters = { q: string; mode: string[]; level: string[]; field: string[]; saved: boolean; sort: "match" | "recent" };
+
+const toggle = (list: string[], v: string) => (list.includes(v) ? list.filter((x) => x !== v) : [...list, v]);
 type AiScore = { score: number; reason: string };
 
 
@@ -59,9 +61,9 @@ export function FeedClient({
   useEffect(() => {
     const p = new URLSearchParams();
     if (f.q) p.set("q", f.q);
-    if (f.mode) p.set("mode", f.mode);
-    if (f.level) p.set("level", f.level);
-    if (f.field) p.set("field", f.field);
+    if (f.mode.length) p.set("mode", f.mode.join(","));
+    if (f.level.length) p.set("level", f.level.join(","));
+    if (f.field.length) p.set("field", f.field.join(","));
     if (f.saved) p.set("saved", "1");
     if (f.sort === "recent") p.set("sort", "recent");
     const s = p.toString();
@@ -116,9 +118,9 @@ export function FeedClient({
   const list = useMemo(() => {
     const terms = tokens(q);
     const base = jobs
-      .filter((j) => !f.mode || j.rawMode === f.mode)
-      .filter((j) => !f.level || j.rawLevel === f.level)
-      .filter((j) => !f.field || j.field === f.field)
+      .filter((j) => !f.mode.length || f.mode.includes(j.rawMode))
+      .filter((j) => !f.level.length || f.level.includes(j.rawLevel))
+      .filter((j) => !f.field.length || f.field.includes(j.field))
       .filter((j) => !f.saved || j.saved)
       .map((j) => ({ ...j, ai: aiScores[j.id] ?? null, foundBy: null as FeedJob["foundBy"] }));
 
@@ -142,7 +144,7 @@ export function FeedClient({
   }, [jobs, f.mode, f.level, f.field, f.saved, f.sort, q, hits, aiScores, isCandidate]);
 
   const aiOnly = list.filter((j) => j.foundBy === "ai").length;
-  const active = Boolean(f.mode || f.level || f.field || f.saved || q);
+  const active = Boolean(f.mode.length || f.level.length || f.field.length || f.saved || q);
   const savedCount = jobs.filter((j) => j.saved).length;
 
   return (
@@ -177,7 +179,7 @@ export function FeedClient({
 
         <div className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] lg:hidden">
           {workModes.map((m) => (
-            <Pill key={m} active={f.mode === m} onClick={() => set({ mode: f.mode === m ? "" : m })}>
+            <Pill key={m} active={f.mode.includes(m)} onClick={() => set({ mode: toggle(f.mode, m) })}>
               {workModeLabel[m]}
             </Pill>
           ))}
@@ -185,7 +187,7 @@ export function FeedClient({
             Saved
           </Pill>
           {fields.map((x) => (
-            <Pill key={x} active={f.field === x} onClick={() => set({ field: f.field === x ? "" : x })}>
+            <Pill key={x} active={f.field.includes(x)} onClick={() => set({ field: toggle(f.field, x) })}>
               {x}
             </Pill>
           ))}
@@ -251,7 +253,7 @@ export function FeedClient({
             {active && (
               <button
                 type="button"
-                onClick={() => setF({ ...initial, q: "", mode: "", level: "", field: "", saved: false })}
+                onClick={() => setF({ ...initial, q: "", mode: [], level: [], field: [], saved: false })}
                 className="mt-5 inline-flex h-11 items-center rounded-full bg-forest px-5 font-semibold text-white"
               >
                 Clear filters
@@ -276,7 +278,7 @@ export function FeedClient({
             {active && (
               <button
                 type="button"
-                onClick={() => setF({ ...f, q: "", mode: "", level: "", field: "", saved: false })}
+                onClick={() => setF({ ...f, q: "", mode: [], level: [], field: [], saved: false })}
                 className="text-[13px] font-semibold text-forest hover:underline"
               >
                 Clear
@@ -285,21 +287,21 @@ export function FeedClient({
           </div>
           <FilterGroup title="Work mode">
             {workModes.map((m) => (
-              <Pill key={m} active={f.mode === m} onClick={() => set({ mode: f.mode === m ? "" : m })}>
+              <Pill key={m} active={f.mode.includes(m)} onClick={() => set({ mode: toggle(f.mode, m) })}>
                 {workModeLabel[m]}
               </Pill>
             ))}
           </FilterGroup>
           <FilterGroup title="Level">
             {seniorities.map((l) => (
-              <Pill key={l} active={f.level === l} onClick={() => set({ level: f.level === l ? "" : l })}>
+              <Pill key={l} active={f.level.includes(l)} onClick={() => set({ level: toggle(f.level, l) })}>
                 {seniorityLabel[l]}
               </Pill>
             ))}
           </FilterGroup>
           <FilterGroup title="Field">
             {fields.map((x) => (
-              <Pill key={x} active={f.field === x} onClick={() => set({ field: f.field === x ? "" : x })}>
+              <Pill key={x} active={f.field.includes(x)} onClick={() => set({ field: toggle(f.field, x) })}>
                 {x}
               </Pill>
             ))}

@@ -10,6 +10,9 @@ import type { FeedJob } from "@/components/feed/job-card";
 import { FeedClient } from "@/components/feed/feed-client";
 import { computeFit, currentTime, fitReason, formatSalary, timeAgo } from "@/lib/jobs/match";
 import { levelShort, typeLabel } from "@/lib/jobs/format";
+import { jobFields } from "@/lib/recruiter/job-schema";
+
+const list = (v?: string) => (v ? v.split(",").filter(Boolean).slice(0, 30) : []);
 import { mergeSkills, primaryCvSkills } from "@/lib/jobs/cv-skills";
 import { workModeLabel } from "@/lib/onboarding/schema";
 
@@ -86,7 +89,10 @@ async function Feed({ searchParams }: { searchParams: Promise<Search> }) {
       description: string | null;
     } | null;
 
-  const fields = [...new Set((jobsRaw ?? []).map((j) => j.field as string))].sort();
+  // Every field a company can pick, then any older field names that still have jobs.
+  const known = jobFields.map((x) => x.name);
+  const extra = [...new Set((jobsRaw ?? []).map((j) => j.field as string))].filter((x) => !known.includes(x)).sort();
+  const fields = [...known, ...extra];
 
   const all = (jobsRaw ?? []).map((j) => {
     const m = computeFit({
@@ -144,9 +150,9 @@ async function Feed({ searchParams }: { searchParams: Promise<Search> }) {
 
   const initial = {
     q: sp.q ?? "",
-    mode: sp.mode ?? "",
-    level: sp.level ?? "",
-    field: sp.field ?? "",
+    mode: list(sp.mode),
+    level: list(sp.level),
+    field: list(sp.field),
     saved: sp.saved === "1",
     sort: (sp.sort === "recent" ? "recent" : "match") as "match" | "recent",
   };
